@@ -1,0 +1,58 @@
+---
+title: "TCC Notas"
+author: "José Humberto da S. C. Junior"
+date: '2022-05-03'
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## TCC Notas
+
+### Recapitulação TCC
+
+DATAFRAME DE CENTROS
+DF de 9 colunas
+1.793 centros distintos
+84 Unidades Petrobras distintas
+16 diretorias
+
+Podemos incorporar ESTADOS dos centros
+
+DATAFRAME DE METACATEGORIAS
+DF de 3 colunas
+4.210 GMs
+261 categorias
+
+TRATAMENTO DO DF DE ITENS
+- Redução de número de features (de 30 para 17)
+- Limpeza de item_req e req
+- Filtro para somente unidade "Unidade"
+- Join com DF de centros para incorporar unidade_pb
+- Join com DF de RCs para buscar grupo de mercadoria
+- Join com DF de categorias para buscar categoria através do GM
+- Limpeza em Família
+- Redução da quantidade de Categorias, criando "Outra categorias"
+
+Dados de nível de itens: qtd, unidade_pb, preço 
+
+TRATAMENTO DO DF DE OPORTUNIDADES
+- Redução de número de features (de 59 para 26)
+- Criação da coluna tempo_cot
+- Correção de qtd_forn_notifi (para definir 0 em vez de NA)
+- Criação da coluna painel_seleção, definindo se houve ou não o painel de seleção
+- Join com tabela de itens pela oportunidade
+- Reduzindo para uma ocorrência por linha
+
+Dados de nível de oportunidade: qtd_itens, qtd_forn_notif, qtd_forn_inscr, tempo_cot, painel_selecao, categoria
+
+TRATAMENTO DO DF DE PROPOSTAS
+- Redução de número de features (de 69 para 16)
+- Join com itens de oportunidade
+
+
+DFs AUXILIARES
+
+DF Propostas válidas
