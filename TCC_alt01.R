@@ -1,9 +1,5 @@
 # Pacotes ####
 
-# Alteração para teste de Git
-# 2222
-
-
 pacman::p_load(
 readxl, # Ler Excel
 lubridate, # Tratar datas
@@ -271,8 +267,8 @@ df_ok <- df_ok[-remove_qtd, ]
 df_ok <- df_ok %>% filter(tempo_cot <= 100)
 
 
-DataExplorer::create_report(df_ok, output_file = "report3.html")
-
+# DataExplorer::create_report(df_ok, output_file = "report3.html")
+# Usar quando quiser gerar um report do DF
 
 # Modelagem de Teste #########  
 
@@ -283,7 +279,7 @@ options(scipen = 999)
 # Aqui um linear usando apenas as variáveis de nível 1 (item)
 
 # modelo <- lm(lances ~ qtd + preco_unitario + unidades_pb (dummy), df_ok)
-modelo_linear_item <- lm(lances ~ ., df_ok[c(4:5, 10, 13:31)])
+modelo_linear_item <- lm(lances ~ ., df_ok[c(3:5, 11, 13:31)])
 
 # Obtendo summary do modelo
 summary(modelo_linear_item)
