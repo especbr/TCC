@@ -27,8 +27,9 @@ DescTools, # Tratamento de Outliers
 univOutl, # Tratamento de Outliers
 ggraph, # Plotar correlações
 kableExtra, # Tabelas
-nlme # HLM2
-
+nlme, # HLM2
+lmtest, # Teste de LL
+reshape2 # Usar a função melt (acho que só)
 )
 
 # Conexões às bases de dados ####
