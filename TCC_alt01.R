@@ -50,9 +50,6 @@ oportunidades_bruto <- openxlsx::read.xlsx(
 propostas_bruto <- openxlsx::read.xlsx(
   "datasets\\propostas_bruto.xlsx")
 
-# Vetor lista de oportunidades para uso em consulta de itens
-oportunidades_lista <- oportunidades_bruto$object_id
-
 # RCs
 rcs <- read.csv("datasets\\rcs.csv") %>% 
   mutate(req = as.character(req),
