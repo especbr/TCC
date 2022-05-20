@@ -31,7 +31,7 @@ summary(df)
 
 #Tabela de frequências da variável dependente (função freq para gerar tabelas de
 #frequência do pacote questionr)
-freq(df$violations) %>%
+freq(df$lances) %>%
   kable()%>%
   kable_styling(bootstrap_options = "striped",
                 full_width = T,
@@ -63,7 +63,6 @@ df %>%
                 font_size = 30)
 
 #Comportamento das variáveis 'painel_selecao' e 'lances'
-
 df %>%
   mutate(lnlances = log(lances),
          lnlances = ifelse(lnlances == -Inf,
@@ -107,8 +106,8 @@ logLik(modelo_poisson)
 #the Poisson model. Journal of Econometrics, v. 46, n. 3, p. 347-364, 1990.
 
 overdisp(x = df,
-         dependent.position = 3,
-         predictor.position = 3:5:7)
+         dependent.position = 11,
+         predictor.position = c(3:4, 7))
 
 
 ################################################################################
@@ -168,9 +167,9 @@ vuong(m1 = modelo_bneg,
 ################################################################################
 #Estimação do modelo ZINBm pela função glmmTMB do pacote glmmTMB
 
-modelo_zinbm <- glmmTMB(formula = lances ~ qtd + preco_unitario + qtd_forn_notif
-                        + (1 | unidade_pb),
-                        zi = ~ qtd_forn_notif,
+modelo_zinbm <- glmmTMB(formula = lances ~ qtd + preco_unitario + unidade_pb
+                        + (1 | categoria),
+                        zi = ~ qtd + preco_unitario + qtd_forn_notif,
                         family = nbinom2,
                         data = df)
 
