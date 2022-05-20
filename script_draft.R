@@ -1,3 +1,8 @@
+DataExplorer::create_report(
+  df, 
+  output_file = "report6.html")
+# Usar quando quiser gerar um report do DF
+
 df %>%
   filter(preco_unitario > 1,
          preco_unitario <= 1800000) %>% 
@@ -240,3 +245,274 @@ data.frame(OLS_Nulo = logLik(modelo_ols_nulo),
         axis.line = element_line())
 
 lrtest(modelo_intercept_inclin_hlm2, modelo_final_hlm2)
+
+
+# Modelagem de Teste #########  
+
+# Tirando notação científica
+options(scipen = 999)
+
+# Rodando modelo linear
+# Aqui um linear usando apenas as variáveis de nível 1 (item)
+
+# modelo <- lm(lances ~ qtd + preco_unitario + unidades_pb (dummy), df_ok)
+modelo_linear_item <- lm(lances ~ ., df_ok[c(3:5, 11, 13:31)])
+
+# Obtendo summary do modelo
+summary(modelo_linear_item)
+
+# Criando stepwise do modelo linear por itens
+modelo_linear_item_step <- step(modelo_linear_item, k = 3.841459)
+
+# Summary do modelo stepwise
+summary(modelo_linear_item_step)
+
+# Nestes resultados preliminares, o R^2 reduziu com o modelo stepwise
+# Entretanto, usaremos este modelo
+
+# Precisamos fazer o teste de Shapiro-Francia no resíduos do modelo
+sf.test(modelo_linear_item_step$residuals)
+
+#Plotando os novos resíduos do modelo step_bc_planosaude com curva normal teórica
+df_ok %>%
+  mutate(residuos = modelo_linear_item_step$residuals) %>%
+  ggplot(aes(x = residuos)) +
+  geom_histogram(aes(y = ..density..), 
+                 color = "white", 
+                 fill = "#440154FF", 
+                 bins = 15,
+                 alpha = 0.6) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(modelo_linear_item_step$residuals),
+                            sd = sd(modelo_linear_item_step$residuals)),
+                size = 2, color = "grey30") +
+  scale_color_manual(values = "grey50") +
+  labs(x = "Resíduos",
+       y = "Frequência") +
+  theme_bw()
+
+# Kernel density estimation (KDE)
+df_ok %>%
+  ggplot() +
+  geom_density(aes(x = modelo_linear_item_step$residuals), fill = "#440154FF") +
+  labs(x = "Resíduos do Modelo Stepwise com Transformação de Box-Cox",
+       y = "Densidade") +
+  theme_bw()
+
+# Transformação de Box-Cox
+lambda_BC_modelo_step_item <- powerTransform(df_ok$lances + 0.01)
+lambda_BC_modelo_step_item
+
+# Inserindo o lambda de Box-Cox na base de dados para a estimação de um novo modelo
+df_ok$bc_lances <- (((df_ok$lances + 0.01 ^ lambda_BC_modelo_step_item$lambda) - 1) / 
+                      lambda_BC_modelo_step_item$lambda)
+
+# Estimando novo modelo com transformação de Box-Cox
+modelo_linear_item_bc <- lm(bc_lances ~ ., df_ok[c(4:5, 44, 13:31)])
+
+# Summary do novo modelo
+summary(modelo_linear_item_bc)
+
+# Step do novo modelo
+modelo_linear_item_bc_step <- step(modelo_linear_item_bc)
+
+# Summary do stepwise do modelo com transformação de Box-Cox
+summary(modelo_linear_item_bc_step)
+
+# Não melhorou nada
+
+ols_vif_tol(modelo_linear_item_bc_step) # Diagnóstico de Multicolinearidade
+
+
+ols_test_breusch_pagan(modelo_linar_item_step) # Teste de Breusch-Pagan
+
+
+
+
+
+# Outras formas de exibir o summary (a primeira gera um doc)
+jtools::export_summs(modelo_linear_item, to.file = "docx", file.name = "summs.docx" )
+jtools::summ(modelo_linar_item_step,
+             digits = 3)
+
+# Calculando intervalos de confiança (verificar que cruza o zero)
+confint(modelo_linar_item_step, level = 0.95)
+
+# Testando normalidade dos resíduos do modelo reglin
+# p-value < 0.05 não é normal
+sf.test(modelo_linar_item_step$residuals)
+
+# Visualizar correlações
+df_ok %>% correlation(method = "pearson") %>% plot()
+
+# Visualizar correlações através de outro método
+PerformanceAnalytics::chart.Correlation((df_ok[c(3:11)]), histogram = TRUE)
+
+# Log Likelihood do modelo linear
+logLik(modelo_linar_item_step)
+
+linear_dm <- lm(lances ~ . -oportunidade -item -familia -preco_estimado -centro -unidade_pb -zero, df_dummies)
+summary(linear_dm)
+linear_dm2 <- lm(lances ~ . -oportunidade -item -familia -preco_estimado -centro -unidade_pb -zero, linear_dm$model)
+hist(linear_dm$residuals)
+step_linear_dm <- step(linear_dm2, k = 3.841459)
+summary(step_linear_dm)
+hist(step_linear_dm$residuals)
+
+ols_vif_tol(linear_dm2) # Diagnóstico de Multicolinearidade
+ols_test_breusch_pagan(modelo_linear_item) # Teste de Breusch-Pagan
+
+
+# RESULTADO PRELIMINAR REGLIN: UMA PORCARIA DE MODELO
+
+
+# BAIXO NÍVEL DE CORRELAÇÃO NO DF COM TRATAMENTO DE OUTLIERS
+
+# EM TESTES INDIVIDUAIS NENHUMA VARIÁVEL MOSTROU UM BOM R2
+# EM REGLIN SIMPLES
+# RESÍDUOS DA REGLIN NÃO É NORMAL
+# TESTAR COM VARIÁVEL TRANSFORMADA POR BOX-COX
+
+
+regpoisson <- glm(lances ~ qtd + preco_unitario +qtd_convidados + tempo_cot,
+                  df, family = "poisson")
+summary(regpoisson)
+
+logit <- glm(zero ~ qtd + preco_unitario +qtd_convidados + tempo_cot, df, 
+             family = "binomial")
+
+summary(logit)
+step(logit)
+
+reg_negbin <- glm.nb(lances ~ qtd + preco_unitario + qtd_convidados + tempo_cot, df)
+summary(reg_negbin)
+
+mod_zbin <- pscl::zeroinfl(lances ~ qtd + preco_unitario + qtd_convidados
+                           | tempo_cot ,
+                           df,
+                           dist = "negbin")
+
+summary(mod_zbin)
+step(reg_negbin)
+
+logLik(modelo)
+logLik(regpoisson)
+logLik(reg_negbin)
+logLik(mod_zbin)
+logLik(logit)
+
+df$previsto <- reg_negbin$fitted.values
+df$previsto_se_zero <- logit$fitted.values
+
+modelo_multi <- glmmTMB(
+  formula = lances ~ qtd + preco_unitario + tempo_cot + (1 | oportunidade),
+  zi = ~ qtd_convidados ,
+  family = nbinom2,
+  data = df)
+
+summary(modelo_multi)
+
+logLik(modelo_multi)
+
+
+outlierTest(reg_negbin)
+cooksd <- cooks.distance(reg_negbin)
+plot(cooksd, pch = "*", cex = 2, main = "Influential Obs by Cooks distance")
+abline(h = 4*mean(cooksd, na.rm=T), col="red")
+text(x=1:length(cooksd)+1, y=cooksd, labels=ifelse(cooksd>4*mean(cooksd, na.rm=T),names(cooksd),""), col="red")
+influential <- as.numeric(names(cooksd)[(cooksd > 4*mean(cooksd, na.rm=T))])
+df[influential, ]
+mean(df$lances)
+var(df$lances)
+pscl::vuong(reg_negbin, mod_zbin)
+
+overdisp::overdisp(df, dependent.position = 10,
+                   predictor.position = c(4, 6, 8:9))
+
+freq(df$lances)
+freq(df$qtd_convidados)
+
+# Anotações, premissas, lembretes
+
+# Variável Dependente: Quantidade de Lances Válidos
+# 
+# Variáveis Preditoras:
+#   Nível 1 - Item da Oportunidade
+# - Quantidade
+# - Preço Unitário Estimado
+# - Unidade logística - variável dummy com agregação para Outros
+# 
+# Nível 2 - Oportunidade
+# - Tempo para lance
+# - Quantidade de Notificados
+# - Painel de Seleção (Dicotômica, se teve seleção de fornecedores em painel)
+# - Categoria (Agregação do Grupo de Mercadorias)
+
+# Sugestão de Título: Prevendo Quantidade de Lances em Licitações
+# utilizando Zero-Inflated Negative Binomial Mixed Models
+
+
+# EDA provisório ####
+
+summary(oportunidades_resumo)
+View(cor(oportunidades_resumo[, 2:7]))
+hist(oportunidades_resumo$lances_por_item)
+DataExplorer::create_report(oportunidades_resumo)
+
+DataExplorer::create_report(df)
+
+boxplot_prop <- ggplot(
+  df, aes(as.integer(lances))) + 
+  geom_histogram(aes(y = ..density..), fill = "seagreen3",
+                 color = "chartreuse4", bins = 28) +
+  geom_density(outline.type = "upper", size = 1) +
+  theme_classic() +
+  ggtitle("Propostas Válidas por Item") +
+  ylab("") +
+  xlab("Total de Propostas") +
+  scale_x_continuous(breaks = seq(0, 28, 1)) 
+
+boxplot_prop
+ggplotly(boxplot_prop)
+
+ggplot(itens_total, aes(y = total)) +
+  geom_boxplot(fill = "seagreen3") +
+  coord_cartesian(ylim = c(0, 30)) +
+  theme_classic() +
+  ylab("Total de Lances")
+
+ggplot(df, aes(y = preco_estimado)) +
+  geom_boxplot(fill = "seagreen3") +
+  coord_cartesian(ylim = c(0, 1800000)) +
+  theme_classic() +
+  ylab("Preço Estimado") +
+  scale_y_continuous(breaks = seq(0, 10000000, 200000))
+
+ggplot(df, aes(y = qtd)) +
+  geom_boxplot(fill = "seagreen3") +
+  coord_cartesian(ylim = c(0, 9000)) +
+  theme_classic() +
+  ylab("Quantidade solicitada") +
+  scale_y_continuous(breaks = seq(0, 30, 5))
+
+df %>% filter(tempo_cot <= 60) %>% 
+  ggplot(aes(y = tempo_cot)) +
+  geom_boxplot(fill = "seagreen3") +
+  coord_cartesian(ylim = c(0, 60)) +
+  theme_classic() +
+  ylab("Tempo para Cotação") +
+  scale_y_continuous(breaks = seq(0, 150, 20))
+
+options(scipen = 999)
+
+ggplot(df, aes(y = qtd_convidados)) +
+  geom_boxplot(fill = "seagreen3") +
+  coord_cartesian(ylim = c(0, 65)) +
+  theme_classic() +
+  ylab("Fornecedores Convidados") +
+  scale_y_continuous(breaks = seq(0, 100, 10))
+
+
+plot(density(itens_total$total))
+
+
