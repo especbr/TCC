@@ -38,19 +38,15 @@ freq(df$lances) %>%
                 font_size = 19)
 
 #Histograma da variável dependente
-ggplotly(
-  df %>%
-    ggplot(aes(x = lances,
-               fill = ..count..)) +
-    geom_histogram(bins = round(2 * nrow(df) ^ (1 / 3)),
-                   color = "black") +
-    scale_fill_gradient("Contagem",
-                        low = "#440154FF", 
-                        high = "#FDE725FF") +
-    labs(x = "Quantidade de propostas para o item",
-         y = "Frequência") +
-    theme_bw()
-)
+df %>%
+  ggplot(aes(x = lances, fill = ..count..)) +
+  geom_histogram(bins = round(2 * nrow(df) ^ (1 / 3)), color = "black") +
+  labs(x = "Quantidade de lances para o item",
+       y = "Frequência",
+       fill = "Contagem") +
+  theme_few() +
+  scale_fill_gradientn(colours = wes_palette(
+    "Zissou1", 50, type = "continuous"))
 
 #Diagnóstico preliminar para observação de eventual igualdade entre a média e
 #a variância da variável dependente 'lances'
@@ -68,21 +64,18 @@ df %>%
          lnlances = ifelse(lnlances == -Inf,
                                yes = 0, 
                                no = lnlances)) %>%
-  ggplot(aes(x = qtd_forn_notif, y = lnlances)) +
+  ggplot(aes(x = preco_unitario, y = lnlances)) +
   geom_point(color = "black") +
   geom_smooth(aes(color = "Fitted Values"),
               method = "lm",
               formula = y ~ splines::bs(x),
               se = FALSE, size = 2) +
-  # geom_text_repel(aes(label = categoria), # pacote ggrepel
-  #                 size = 2,
-  #                 color = "black",
-  #                 max.overlaps = 100) +
+  geom_jitter(width = 0.8, height = 0.1) +
   labs(y = "Lances em Itens de Oportunidades",
        x = "Quantidade de Fornecedores Notificados") +
   scale_color_manual("Label:",
                      values = "gold") +
-  facet_wrap(~ painel_selecao) +
+  facet_wrap(~ zero) +
   theme_bw()
 
 
@@ -107,7 +100,7 @@ logLik(modelo_poisson)
 
 overdisp(x = df,
          dependent.position = 11,
-         predictor.position = c(3:4, 7))
+         predictor.position = c(3:4, 7, 9))
 
 
 ################################################################################
