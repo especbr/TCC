@@ -22,6 +22,9 @@ df_corr  <- df %>%
                             TRUE ~ log(qtd_forn_notif)),
          tempo_cot = log(tempo_cot))
 
+df_corr_scaled <-  df_corr %>% scale() %>% as.data.frame()
+ 
+
 df_scaled <- df %>%
   select(lances, qtd, preco_unitario, qtd_forn_notif, tempo_cot) %>%
   scale() %>% 
@@ -33,3 +36,17 @@ maiorQ1 <- function(numero){
   numero > 1
 }
 
+df_corr2 <- df %>%
+  mutate(lances = case_when(lances <= 1 ~ 0,
+                            TRUE ~ log(lances)),
+         qtd = log(qtd),
+         preco_unitario = log(preco_unitario),
+         qtd_forn_notif = case_when(qtd_forn_notif <= 1 ~ 0,
+                                    TRUE ~ log(qtd_forn_notif)),
+         tempo_cot = log(tempo_cot))
+
+DataExplorer::plot_correlation(df, title = "DF normal")
+DataExplorer::plot_correlation(df_corr, title = "DF Log somente quanti")
+DataExplorer::plot_correlation(df_corr2, title = "DF Log quanti e quali")
+DataExplorer::plot_correlation(df_scaled, title = "DF quanti com scale e sem log")
+DataExplorer::plot_correlation(df_corr_scaled, title = "DF Log com scale")
