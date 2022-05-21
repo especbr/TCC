@@ -32,7 +32,9 @@ lmtest, # Teste de LL
 reshape2, # Usar a função melt (acho que só)
 openxlsx, # Importar/Exportar Excel
 hablar, # Conversão de tipos de dados
-tidyr # Tidyezar BDS
+tidyr, # Tidyezar BDS
+ggthemes, # Temas de gráficos
+ggsci # Paletas de cores
 )
 
 # O pacote MASS sobrescreve a função select do pacote dplyr.
