@@ -34,7 +34,9 @@ openxlsx, # Importar/Exportar Excel
 hablar, # Conversão de tipos de dados
 tidyr, # Tidyezar BDS
 ggthemes, # Temas de gráficos
-ggsci # Paletas de cores
+ggsci, # Paletas de cores
+jtools, # Para uso do export_summs
+gtsummary # Outputs de dfs e modelos
 )
 
 # O pacote MASS sobrescreve a função select do pacote dplyr.
@@ -57,19 +59,16 @@ rcs <- read.csv("datasets\\rcs.csv") %>%
   mutate(req = as.character(req),
          item_req = as.character(item_req))
 
-# Dataframe de Centros e Categorias de Grupos de Mercadorias
-# centros <- readxl::read_xlsx(
-#   "datasets\\centros.xlsx", sheet = "Hierarquia") %>% 
-#   clean_names() %>% 
-#   rename("unidade_pb" = "unidade")
-
 centros <- readRDS("datasets\\centros.rds") %>%
   clean_names() %>% 
   rename("unidade_pb" = "unidade") %>% 
   select(centro, unidade_pb, estado, regiao, lat, long) %>%
   filter(!is.na(estado),
          !is.na(unidade_pb)) %>% 
+  mutate(regiao = replace(x = regiao, list = regiao == "centro-oeste", 
+                          values = "centro_oeste")) %>% 
   convert(fct(estado, regiao))
+  
 
 categorias <- readxl::read_xls(
   "datasets\\Grupos de Mercadoria x Macrocategorias.xls") %>% 
@@ -102,7 +101,15 @@ itens_de_oportunidade <- itens_de_oportunidade_bruto %>%
            is.na(categoria) ~ "Outras categorias",
            TRUE ~ categoria),
          categoria = fct_lump(as.factor(categoria), prop = 0.05 ,
-                              other_level = "Outras categorias")
+                              other_level = "Outras categorias"),
+         categoria = case_when(
+           categoria == "Outras categorias" ~ "A",
+           categoria == "Válvulas de Acionamento Automático" ~ "B",
+           categoria == "Instrumentos de Aferição e Controle de Pressão" ~ "C",
+           categoria == "Instrumentos Indicadores e Registradores" ~ "D",
+           categoria == "Instrumentos de Medição e Observação de Vazão" ~ "E",
+           categoria == "Válvulas de Acionamento Manual" ~ "F"
+         )
          )
 
 # Tratamento de oportunidades. Seleção inicial de colunas relevantes e 
@@ -202,31 +209,18 @@ df <- itens_de_oportunidade %>%
                    c("oportunidade", "qtd_forn_notif", "categoria",
                      "tempo_cot", "painel_selecao")),
             by = "oportunidade") %>% 
-  mutate(zero = case_when(
+  mutate(lance_sn = case_when(
            total == 0 ~ 0,
            TRUE ~ 1),
-         preco_unitario = preco_estimado / qtd,
-         unidade_pb = case_when(
-           is.na(unidade_pb) ~ "Outros",
-           TRUE ~ unidade_pb
-         )) %>% 
-  hablar::convert(fct(unidade_pb, regiao, estado, zero)) %>% 
-  select(oportunidade, item, qtd, preco_unitario, unidade_pb, regiao,  
-         qtd_forn_notif, painel_selecao, tempo_cot, categoria,
-         lances = total, zero) %>% 
-  filter(!is.na(regiao))
+         preco_unitario = preco_estimado / qtd) %>% 
+   select(oportunidade, item, qtd, preco_unitario, qtd_forn_notif, tempo_cot,
+         regiao, painel_selecao, categoria, 
+         lances = total, lance_sn) %>% 
+  filter(!is.na(regiao),
+         regiao != "centro_oeste") %>% 
+  hablar::convert(fct(regiao, lance_sn, categoria)) %>%
+  arrange(oportunidade, as.numeric(item))
   
-  
-# Limitando a 20 a quantidade de categorias de Unidades Operacionais
-df$unidade_pb <- gsub("^UTG", "UTG", df$unidade_pb)
-df$unidade_pb <- fct_lump(df$unidade_pb, n = 20, other_level = "Outros")
-
-
-# Dummyzando o df
-df_dummies <- dummy_cols(.data = df, 
-           select_columns = c("unidade_pb", "categoria"),
-           remove_first_dummy = TRUE)
-
 
 #Tratamento de Outliers ####
 
@@ -267,6 +261,13 @@ df_ok <- df_ok %>% filter(tempo_cot <= 100)
 
 df <- df_ok
 rm(df_ok)
+
+# Dummyzando o df
+df_dummies <- dummy_cols(.data = df, 
+                         select_columns = c("regiao", "categoria"),
+                         remove_most_frequent_dummy = FALSE, 
+                         remove_selected_columns = TRUE)
+
 
 # Função std dev das variâncias ####
 
