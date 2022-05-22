@@ -83,13 +83,19 @@ df %>%
 #                        ESTIMAÇÃO DO MODELO POISSON                           #
 ################################################################################
 #Estimação do modelo Poisson
-modelo_poisson <- glm(formula = lances ~ qtd + preco_unitario + qtd_forn_notif,
-                      data = df,
+modelo_poisson <- glm(formula = lances ~ . - oportunidade - item - lance_sn,
+                      data = df_dummies,
                       family = "poisson")
 
 #Parâmetros e valor de Log-Likelihood (LL)
 summary(modelo_poisson)
 logLik(modelo_poisson)
+
+tbl_regression(modelo_poisson, estimate_fun = ~ style_sigfig(., digits = 7),
+               intercept = TRUE, conf.int = FALSE) %>% 
+  as_flex_table() %>% 
+  flextable::save_as_docx(path = "tables\\table_poisson.docx")
+
 
 
 ################################################################################
@@ -98,9 +104,9 @@ logLik(modelo_poisson)
 #CAMERON, A. C.; TRIVEDI, P. K. Regression-based tests for overdispersion in
 #the Poisson model. Journal of Econometrics, v. 46, n. 3, p. 347-364, 1990.
 
-overdisp(x = df,
-         dependent.position = 11,
-         predictor.position = c(3:4, 7, 9))
+overdisp(x = df_dummies,
+         dependent.position = 8,
+         predictor.position = c(3:7, 10:20))
 
 
 ################################################################################
@@ -108,26 +114,31 @@ overdisp(x = df,
 ################################################################################
 #Estimação do modelo binomial negativo pela função glm.nb do pacote MASS
 #Modelo Binomial Negativo do Tipo 2 (NB2)
-modelo_bneg <- glm.nb(formula = lances ~ qtd + preco_unitario + qtd_forn_notif,
-                      data = df)
+modelo_bneg <- glm.nb(formula = lances ~ . - oportunidade - item - lance_sn,
+                      data = df_dummies)
 
 #Parâmetros e valor de Log-Likelihood (LL)
 summary(modelo_bneg)
 logLik(modelo_bneg)
 
+tbl_regression(modelo_bneg, estimate_fun = ~ style_sigfig(., digits = 7),
+               intercept = TRUE, conf.int = FALSE) %>% 
+  as_flex_table() %>% 
+  flextable::save_as_docx(path = "tables\\table_bneg.docx")
 
 ################################################################################
 #              ESTIMAÇÃO DO MODELO ZERO-INFLATED POISSON (ZIP)                 #
 ################################################################################
 #Estimação do modelo ZIP pela função zeroinfl do pacote pscl
 modelo_zip <- zeroinfl(formula = lances ~ qtd + preco_unitario + qtd_forn_notif
-                       | tempo_cot + qtd_forn_notif + unidade_pb,
+                       | tempo_cot + qtd_forn_notif,
                        data = df,
                        dist = "poisson")
 
 #Parâmetros e valor de Log-Likelihood (LL)
 summary(modelo_zip)
 logLik(modelo_zip)
+
 
 #Teste de Vuong:
 #VUONG, Q. H. Likelihood ratio tests for model selection and non-nested
@@ -142,7 +153,7 @@ vuong(m1 = modelo_poisson,
 ################################################################################
 #Estimação do modelo ZINB pela função zeroinfl do pacote pscl
 modelo_zinb <- zeroinfl(formula = lances ~ qtd + preco_unitario + qtd_forn_notif
-                        | tempo_cot + qtd_forn_notif + unidade_pb,
+                        | tempo_cot + qtd_forn_notif,
                         data = df,
                         dist = "negbin")
 
