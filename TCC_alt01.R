@@ -88,9 +88,9 @@ itens_de_oportunidade <- itens_de_oportunidade_bruto %>%
          req = reqnumber, item_req = reqnumber_item) %>% 
   mutate(item_req = str_remove(item_req, "^0+"),
          req = str_trim(req)) %>% 
-  filter(unidade == "Unidade") %>% 
   left_join(select(centros, c("centro", "unidade_pb", "estado", "regiao")),
             by = "centro") %>%
+  filter(unidade == "Unidade") %>% 
   left_join(select(rcs, "req", "item_req", "grupo_mercadoria"),
             by = c("req", "item_req")) %>% 
   left_join(select(categorias, "grupo_mercadoria", "categoria"),
@@ -216,8 +216,7 @@ df <- itens_de_oportunidade %>%
    select(oportunidade, item, qtd, preco_unitario, qtd_forn_notif, tempo_cot,
          regiao, painel_selecao, categoria, 
          lances = total, lance_sn) %>% 
-  filter(!is.na(regiao),
-         regiao != "centro_oeste") %>% 
+  filter(!is.na(regiao)) %>% 
   hablar::convert(fct(regiao, lance_sn, categoria)) %>%
   arrange(oportunidade, as.numeric(item))
   
