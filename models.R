@@ -11,7 +11,7 @@ pacman::p_load("plotly","tidyverse","knitr","kableExtra","reshape2","ggrepel",
 ##############################################################################
 
 # Já carregada
-
+options(scipen = 999)
 
 ##############################################################################
 #                   OBSERVAÇÃO DA BASE DE DADOS corruption                   #
@@ -114,8 +114,8 @@ overdisp(x = df_dummies,
 ################################################################################
 #Estimação do modelo binomial negativo pela função glm.nb do pacote MASS
 #Modelo Binomial Negativo do Tipo 2 (NB2)
-modelo_bneg <- glm.nb(formula = lances ~ qtd,
-                      data = df_dummies)
+modelo_bneg <- glm.nb(formula = lances ~ qtd + qtd_forn_notif,
+                      data = df)
 
 #Parâmetros e valor de Log-Likelihood (LL)
 summary(modelo_bneg)
@@ -131,7 +131,7 @@ tbl_regression(modelo_bneg, estimate_fun = ~ style_sigfig(., digits = 7),
 #              ESTIMAÇÃO DO MODELO ZERO-INFLATED POISSON (ZIP)                 #
 ################################################################################
 #Estimação do modelo ZIP pela função zeroinfl do pacote pscl
-modelo_zip <- zeroinfl(formula = lances ~ qtd
+modelo_zip <- zeroinfl(formula = lances ~ qtd + qtd_forn_notif
                        | tempo_cot,
                        data = df,
                        dist = "poisson")
@@ -152,7 +152,7 @@ vuong(m1 = modelo_poisson,
 #        ESTIMAÇÃO DO MODELO ZERO-INFLATED BINOMIAL NEGATIVO (ZINB)            #
 ################################################################################
 #Estimação do modelo ZINB pela função zeroinfl do pacote pscl
-modelo_zinb <- zeroinfl(formula = lances ~ qtd
+modelo_zinb <- zeroinfl(formula = lances ~ qtd + qtd_forn_notif
                         | tempo_cot,
                         data = df,
                         dist = "negbin")
@@ -171,11 +171,12 @@ vuong(m1 = modelo_bneg,
 ################################################################################
 #Estimação do modelo ZINBm pela função glmmTMB do pacote glmmTMB
 
-modelo_zinbm <- glmmTMB(formula = lances ~ qtd 
-                        + (1 | categoria),
+modelo_zinbm <- glmmTMB(formula = lances ~ qtd + media_notif_cat
+                        + qtd:media_notif_cat
+                        + (qtd | categoria),
                         zi = ~ tempo_cot,
                         family = nbinom2,
-                        data = df)
+                        data = df_hlm2)
 
 #Parâmetros e valor de Log-Likelihood (LL)
 summary(modelo_zinbm)
@@ -186,16 +187,12 @@ export_summs(modelo_poisson, modelo_bneg, modelo_zinbm,
 
 
 #Comparação entre os LLs de todos os modelos estimados neste exemplo
-data.frame(Poisson = logLik(modelo_poisson),
-           ZIP = logLik(modelo_zip),
-           BNEG = logLik(modelo_bneg),
+data.frame(BNEG = logLik(modelo_bneg),
            ZINB = logLik(modelo_zinb),
            ZINBM = logLik(modelo_zinbm)) %>%
-  rename(`Poisson` = 1,
-         `ZIP` = 2,
-         `BNEG` = 3,
-         `ZINB` = 4,
-         `ZINB Multilevel` = 5) %>%
+  rename(`BNEG` = 1,
+         `ZINB` = 2,
+         `ZINB Multilevel` = 3) %>%
   melt() %>%
   ggplot(aes(x = variable, y = (abs(-value)), fill = factor(variable))) +
   geom_bar(stat = "identity") +
@@ -214,5 +211,21 @@ data.frame(Poisson = logLik(modelo_poisson),
 
 #Teste de razão de verossimilhança
 lrtest(modelo_zinb,modelo_zinbm)
+
+#Valores previstos do número de lances em função da variável quantidade para o 
+# modelo ZINBm com interceptos e inclinações aleatórios
+
+df_teste %>%
+  mutate(fitted_categoria = predict(modelo_zinbm_AA, level = 1)) %>% 
+  ggplot() +
+  geom_point(aes(x = qtd, y = fitted_categoria)) +
+  geom_smooth(aes(x = qtd, y = fitted_categoria, color = factor(categoria)), 
+              method = "lm", se = F) +
+  scale_fill_gradientn(colours = wes_palette(
+    "Zissou1", 50, type = "continuous")) +
+  labs(x = "Quantidade Demandada do Material",
+       y = "Quantidade de Lances (Fitted)",
+       color = "Categoria") +
+  theme_few()
 
 ####################################### FIM ####################################
