@@ -516,3 +516,67 @@ ggplot(df, aes(y = qtd_convidados)) +
 plot(density(itens_total$total))
 
 
+#########################################
+
+
+df_hlm2_regiao <- df %>% 
+  group_by(regiao) %>% 
+  summarise(media_notif_regiao = round(mean(qtd_forn_notif), 2),
+            media_tempo_regiao = round(mean(tempo_cot), 2))
+
+df_hlm2_categoria <- df %>% 
+  group_by(categoria) %>% 
+  summarise(media_notif_cat = round(mean(qtd_forn_notif), 2),
+            media_tempo_cat = round(mean(tempo_cot), 2))
+
+df_hlm2 <- df %>% 
+  inner_join(df_hlm2_categoria, by = "categoria") %>% 
+  inner_join(df_hlm2_regiao, by = "regiao")
+
+
+modelo_zinbm_AA <- glmmTMB(formula = lances ~ qtd + media_notif_cat
+                           + qtd:media_notif_cat
+                           + (qtd | categoria),
+                           zi = ~ tempo_cot,
+                           family = nbinom2,
+                           data = df_hlm2)
+
+#Parâmetros e valor de Log-Likelihood (LL)
+summary(modelo_zinbm_AA)
+logLik(modelo_zinbm_AA)
+
+# Dummyzando o df
+df_dummies_hlm2 <- dummy_cols(.data = df, 
+                              select_columns = c("regiao"),
+                              remove_most_frequent_dummy = FALSE, 
+                              remove_selected_columns = TRUE)
+
+
+
+
+df_teste <- df_hlm2
+df_teste$predict <- predict(modelo_zinbm_AA, df_teste)
+
+
+
+
+ggplotly(df_teste %>%
+           mutate(fitted_categoria = predict(modelo_zinbm_AA, level = 1)) %>% 
+           ggplot() +
+           geom_point(aes(x = qtd_forn_notif, y = fitted_categoria)) +
+           geom_smooth(aes(x = qtd_forn_notif, y = fitted_categoria, color = factor(categoria)), 
+                       method = "lm", se = F) +
+           scale_colour_viridis_d() +
+           labs(x = "Quantidade de Fornecedores Notificados",
+                y = "Quantidade de Lances (Fitted Values)") +
+           theme_bw()
+)
+
+
+
+df_hlm2 %>% 
+  ggplot() +
+  aes(media_notif_cat, lances, color = categoria) +
+  geom_point() +
+  geom_smooth(method = "lm") +
+  geom_jitter()
